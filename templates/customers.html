@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Customers{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>Manage Customers</h2>
+    <div class="card">
+        <form method="POST">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone</label>
+                <input type="text" id="phone" name="phone" pattern="\+?[0-9]{10,12}" title="Enter a valid phone number (10-12 digits)" required>
+            </div>
+            <div class="form-group">
+                <label for="collateral">Collateral</label>
+                <input type="text" id="collateral" name="collateral" required>
+            </div>
+            <button type="submit" class="btn">Add Customer</button>
+        </form>
+    </div>
+
+    <h3>Customer List</h3>
+    <table class="table">
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Collateral</th>
+        </tr>
+        {% for customer in customers %}
+        <tr>
+            <td>{{ customer[0] }}</td>
+            <td>{{ customer[1] }}</td>
+            <td>{{ customer[2] }}</td>
+            <td>{{ customer[3] }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

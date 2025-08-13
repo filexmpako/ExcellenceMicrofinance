@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Loans{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>Manage Loans</h2>
+    <div class="card">
+        <form method="POST">
+            <div class="form-group">
+                <label for="customer_id">Customer</label>
+                <select id="customer_id" name="customer_id" required>
+                    <option value="">Select Customer</option>
+                    {% for customer in customers %}
+                    <option value="{{ customer[0] }}">{{ customer[1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="amount">Amount (TZS)</label>
+                <input type="number" id="amount" name="amount" min="1" required>
+            </div>
+            <div class="form-group">
+                <label for="duration">Duration (days)</label>
+                <input type="number" id="duration" name="duration" min="1" required>
+            </div>
+            <div class="form-group">
+                <label for="loan_type">Loan Type</label>
+                <select id="loan_type" name="loan_type" required>
+                    <option value="kilimo">Kilimo</option>
+                    <option value="dharura">Dharura</option>
+                    <option value="biashara">Biashara</option>
+                    <option value="elimu">Elimu</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="interest_rate">Interest Rate (%)</label>
+                <input type="number" id="interest_rate" name="interest_rate" step="0.01" min="0" required>
+            </div>
+            <button type="submit" class="btn">Add Loan</button>
+        </form>
+    </div>
+
+    <h3>Loan List</h3>
+    <table class="table">
+        <tr>
+            <th>ID</th>
+            <th>Customer</th>
+            <th>Amount</th>
+            <th>Date</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Loan Type</th>
+            <th>Interest Rate</th>
+            <th>Collateral</th>
+            <th>Total Repayment</th>
+            <th>Action</th>
+        </tr>
+        {% for loan in loans %}
+        <tr>
+            <td>{{ loan[0] }}</td>
+            <td>{{ loan[1] }}</td>
+            <td>{{ loan[2] | format_currency }}</td>
+            <td>{{ loan[3] }}</td>
+            <td>{{ loan[4] }}</td>
+            <td>{{ loan[5] }}</td>
+            <td>{{ loan[6] }}</td>
+            <td>{{ loan[7] }}%</td>
+            <td>{{ loan[8] }}</td>
+            <td>{{ (loan[2] * (1 + loan[7]/100)) | format_currency }}</td>
+            <td>
+                {% if loan[5] == 'unpaid' %}
+                <a href="{{ url_for('repay_loan', loan_id=loan[0]) }}" class="btn">Mark as Paid</a>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

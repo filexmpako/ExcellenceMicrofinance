@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<div class="container">
+    <h2>Loan Reports</h2>
+    <button onclick="window.print()" class="btn print-btn">Print Report</button>
+
+    <h3>Paid Loans</h3>
+    <table class="table">
+        <tr>
+            <th>Customer</th>
+            <th>Amount</th>
+            <th>Date</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Loan Type</th>
+            <th>Interest Rate</th>
+            <th>Collateral</th>
+            <th>Total Repayment</th>
+        </tr>
+        {% for loan in paid_loans %}
+        <tr>
+            <td>{{ loan[0] }}</td>
+            <td>{{ loan[1] | format_currency }}</td>
+            <td>{{ loan[2] }}</td>
+            <td>{{ loan[3] }}</td>
+            <td>{{ loan[4] }}</td>
+            <td>{{ loan[5] }}</td>
+            <td>{{ loan[6] }}%</td>
+            <td>{{ loan[7] }}</td>
+            <td>{{ (loan[1] * (1 + loan[6]/100)) | format_currency }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    
+    <h3>Unpaid Loans</h3>
+    <table class="table">
+        <tr>
+            <th>Customer</th>
+            <th>Amount</th>
+            <th>Date</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Loan Type</th>
+            <th>Interest Rate</th>
+            <th>Collateral</th>
+            <th>Total Repayment</th>
+        </tr>
+        {% for loan in unpaid_loans %}
+        <tr>
+            <td>{{ loan[0] }}</td>
+            <td>{{ loan[1] | format_currency }}</td>
+            <td>{{ loan[2] }}</td>
+            <td>{{ loan[3] }}</td>
+            <td>{{ loan[4] }}</td>
+            <td>{{ loan[5] }}</td>
+            <td>{{ loan[6] }}%</td>
+            <td>{{ loan[7] }}</td>
+            <td>{{ (loan[1] * (1 + loan[6]/100)) | format_currency }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

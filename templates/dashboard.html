@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="card">
+    <h2>Dashboard</h2>
+    <div class="stats">
+        <div class="card">
+            <h3>Total Customers</h3>
+            <p>{{ total_customers }}</p>
+        </div>
+        <div class="card">
+            <h3>Active Loans</h3>
+            <p>{{ active_loans }}</p>
+        </div>
+        <div class="card">
+            <h3>Total Outstanding</h3>
+            <p>{{ total_outstanding }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

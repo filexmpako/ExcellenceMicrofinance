@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>Welcome to Excellence Microfinance</h1>
+    <p>Manage your microfinance operations efficiently.</p>
+    {% if 'user_id' not in session %}
+    <a href="{{ url_for('login') }}" class="btn">Login to Continue</a>
+    {% else %}
+    <a href="{{ url_for('dashboard') }}" class="btn">Go to Dashboard</a>
+    {% endif %}
+</div>
+{% endblock %}
