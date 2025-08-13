@@ -5,7 +5,7 @@ import hashlib
 import os
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key'
+app.secret_key = 'x7k9p3m2q8w4z6'  # Updated to a unique secret key for security
 
 # Database initialization and migration
 def init_db():
@@ -200,4 +200,5 @@ def send_reminders():
 if __name__ == '__main__':
     os.makedirs('database', exist_ok=True)
     init_db()
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
