@@ -1,17 +1,29 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime
 import hashlib
 import os
 
 app = Flask(__name__)
-app.secret_key = 'x7k9p3m2q8w4z6'  # Updated to a unique secret key for security
+app.secret_key = 'x7k9p3m2q8w4z6'  # Keep secret in env variable for production
 
-# Database initialization and migration
+# Absolute path to database file
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "database", "microfinance.db")
+
+# Ensure database folder exists
+os.makedirs(os.path.join(BASE_DIR, "database"), exist_ok=True)
+
+# Helper: get DB connection
+def get_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# Initialize / migrate DB
 def init_db():
-    with sqlite3.connect('database/microfinance.db') as conn:
+    with get_connection() as conn:
         c = conn.cursor()
-        # Create tables if they don't exist
         c.execute('''CREATE TABLE IF NOT EXISTS employees (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
@@ -34,23 +46,9 @@ def init_db():
             interest_rate REAL,
             FOREIGN KEY(customer_id) REFERENCES customers(id)
         )''')
-        # Migrate existing customers table to add collateral if missing
-        try:
-            c.execute("ALTER TABLE customers ADD COLUMN collateral TEXT")
-        except sqlite3.OperationalError:
-            pass  # Column already exists
-        # Migrate existing loans table to add loan_type and interest_rate if missing
-        try:
-            c.execute("ALTER TABLE loans ADD COLUMN loan_type TEXT")
-        except sqlite3.OperationalError:
-            pass  # Column already exists
-        try:
-            c.execute("ALTER TABLE loans ADD COLUMN interest_rate REAL")
-        except sqlite3.OperationalError:
-            pass  # Column already exists
-        # Create default admin user
+        # Default admin
         c.execute("INSERT OR IGNORE INTO employees (username, password) VALUES (?, ?)",
-                 ('admin', hashlib.sha256('admin123'.encode()).hexdigest()))
+                  ('admin', hashlib.sha256('admin123'.encode()).hexdigest()))
         conn.commit()
 
 # Login required decorator
@@ -76,13 +74,13 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = hashlib.sha256(request.form['password'].encode()).hexdigest()
-        with sqlite3.connect('database/microfinance.db') as conn:
+        with get_connection() as conn:
             c = conn.cursor()
             c.execute('SELECT * FROM employees WHERE username = ? AND password = ?', 
-                     (username, password))
+                      (username, password))
             user = c.fetchone()
             if user:
-                session['user_id'] = user[0]
+                session['user_id'] = user['id']
                 flash('Login successful', 'success')
                 return redirect(url_for('dashboard'))
             flash('Invalid credentials', 'error')
@@ -91,7 +89,7 @@ def login():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    with sqlite3.connect('database/microfinance.db') as conn:
+    with get_connection() as conn:
         c = conn.cursor()
         c.execute('SELECT COUNT(*) FROM customers')
         total_customers = c.fetchone()[0]
@@ -99,10 +97,10 @@ def dashboard():
         active_loans = c.fetchone()[0]
         c.execute('SELECT SUM(amount * (1 + COALESCE(interest_rate, 0) / 100)) FROM loans WHERE status = "unpaid"')
         total_outstanding = c.fetchone()[0] or 0
-    return render_template('dashboard.html', 
-                         total_customers=total_customers,
-                         active_loans=active_loans,
-                         total_outstanding=total_outstanding)
+    return render_template('dashboard.html',
+                           total_customers=total_customers,
+                           active_loans=active_loans,
+                           total_outstanding=total_outstanding)
 
 @app.route('/customers', methods=['GET', 'POST'])
 @login_required
@@ -112,17 +110,17 @@ def customers():
         phone = request.form['phone']
         collateral = request.form['collateral']
         try:
-            with sqlite3.connect('database/microfinance.db') as conn:
+            with get_connection() as conn:
                 c = conn.cursor()
-                c.execute('INSERT INTO customers (name, phone, collateral) VALUES (?, ?, ?)', 
-                         (name, phone, collateral))
+                c.execute('INSERT INTO customers (name, phone, collateral) VALUES (?, ?, ?)',
+                          (name, phone, collateral))
                 conn.commit()
                 flash('Customer added successfully', 'success')
         except sqlite3.IntegrityError:
             flash('Phone number already exists', 'error')
         return redirect(url_for('customers'))
     
-    with sqlite3.connect('database/microfinance.db') as conn:
+    with get_connection() as conn:
         c = conn.cursor()
         c.execute('SELECT id, name, phone, COALESCE(collateral, "N/A") FROM customers')
         customers = c.fetchall()
@@ -138,23 +136,21 @@ def loans():
         loan_type = request.form['loan_type']
         interest_rate = float(request.form['interest_rate'])
         date = datetime.now().strftime('%Y-%m-%d')
-        
+
         if amount <= 0 or duration <= 0 or interest_rate < 0:
             flash('Amount and duration must be positive, and interest rate cannot be negative.', 'error')
             return redirect(url_for('loans'))
-        
-        with sqlite3.connect('database/microfinance.db') as conn:
+
+        with get_connection() as conn:
             c = conn.cursor()
             c.execute('INSERT INTO loans (customer_id, amount, date, duration, status, loan_type, interest_rate) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                     (customer_id, amount, date, duration, 'unpaid', loan_type, interest_rate))
-            c.execute('SELECT phone, name, COALESCE(collateral, "N/A") FROM customers WHERE id = ?', (customer_id,))
-            customer = c.fetchone()
+                      (customer_id, amount, date, duration, 'unpaid', loan_type, interest_rate))
             conn.commit()
-        
+
         flash('Loan recorded successfully', 'success')
         return redirect(url_for('loans'))
-    
-    with sqlite3.connect('database/microfinance.db') as conn:
+
+    with get_connection() as conn:
         c = conn.cursor()
         c.execute('SELECT l.id, c.name, l.amount, l.date, l.duration, l.status, COALESCE(l.loan_type, "N/A"), COALESCE(l.interest_rate, 0), COALESCE(c.collateral, "N/A") FROM loans l JOIN customers c ON l.customer_id = c.id')
         loans = c.fetchall()
@@ -165,20 +161,17 @@ def loans():
 @app.route('/loans/repay/<int:loan_id>')
 @login_required
 def repay_loan(loan_id):
-    with sqlite3.connect('database/microfinance.db') as conn:
+    with get_connection() as conn:
         c = conn.cursor()
         c.execute('UPDATE loans SET status = "paid" WHERE id = ?', (loan_id,))
-        c.execute('SELECT c.phone, c.name, l.amount, COALESCE(l.interest_rate, 0), COALESCE(l.loan_type, "N/A"), COALESCE(c.collateral, "N/A") FROM loans l JOIN customers c ON l.customer_id = c.id WHERE l.id = ?', (loan_id,))
-        loan = c.fetchone()
         conn.commit()
-    
     flash('Loan marked as paid', 'success')
     return redirect(url_for('loans'))
 
 @app.route('/reports')
 @login_required
 def reports():
-    with sqlite3.connect('database/microfinance.db') as conn:
+    with get_connection() as conn:
         c = conn.cursor()
         c.execute('SELECT c.name, l.amount, l.date, l.duration, l.status, COALESCE(l.loan_type, "N/A"), COALESCE(l.interest_rate, 0), COALESCE(c.collateral, "N/A") FROM loans l JOIN customers c ON l.customer_id = c.id WHERE l.status = "paid"')
         paid_loans = c.fetchall()
@@ -193,12 +186,9 @@ def logout():
     flash('Logged out successfully', 'success')
     return redirect(url_for('login'))
 
-# Background task for reminders (disabled without SMS)
-def send_reminders():
-    pass
+# Run DB init at startup (works with Gunicorn)
+init_db()
 
 if __name__ == '__main__':
-    os.makedirs('database', exist_ok=True)
-    init_db()
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
